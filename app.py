@@ -83,7 +83,7 @@ with tab2:
     
     st.markdown("---")
     # Lógica de perfiles personalizables
-    list_perfiles_metal = ["20x20 mm", "30x30 mm", "40x40 mm", "50x50 mm", "40x20 mm (Rect)"]
+    list_perfiles_metal = ["20x10 mm","20x20 mm","20x30 mm","20x40 mm","20x50 mm", "30x30 mm","30x20 mm","30x40 mm","40x20 mm","40x30 mm", "40x40 mm", "50x50 mm"]
     
     dif_perfil = st.checkbox("¿Deseas usar un perfil distinto para el interior?")
     
