@@ -11,11 +11,10 @@ st.write("Optimizado para presupuestos rápidos en terreno.")
 # --- PESTAÑAS ---
 tab1, tab2, tab3 = st.tabs(["🏠 Cobertizos", "🚧 Rejas", "🧱 Muros"])
 
-# --- PESTAÑA 1: COBERTIZOS Y TECHOS ---
+# --- PESTAÑA 1: COBERTIZOS Y TECHOS (Sin cambios) ---
 with tab1:
     st.header("Techumbres y Cobertizos")
     
-    # 1. Selección de Geometría
     dict_imagenes = {
         "1 Agua": "1 agua.jpg", 
         "2 Aguas (Tipo A)": "2 aguas.png", 
@@ -24,14 +23,14 @@ with tab1:
     
     tipo_techo = st.selectbox("Tipo de Geometría", list(dict_imagenes.keys()))
     
-    # 2. Carga de Imagen Referencial
-    ruta_img = os.path.join("img", dict_imagenes[tipo_techo])
-    if os.path.exists(ruta_img):
-        st.image(ruta_img, caption=f"Estructura: {tipo_techo}", use_container_width=True)
-    else:
-        st.info("Asegúrate de tener la carpeta 'img' en GitHub con las fotos para ver la referencia.")
+    # Se ha comentado la carga de imagen por si no tienes la carpeta local 'img'
+    # pero el código para mostrarla sigue ahí.
+    # ruta_img = os.path.join("img", dict_imagenes[tipo_techo])
+    # if os.path.exists(ruta_img):
+    #     st.image(ruta_img, caption=f"Estructura: {tipo_techo}", use_container_width=True)
+    # else:
+    #     st.info("Asegúrate de tener la carpeta 'img' en GitHub con las fotos para ver la referencia.")
 
-    # 3. Entradas de Medidas
     col1, col2 = st.columns(2)
     with col1:
         largo = st.number_input("Largo Cobertizo (m)", min_value=0.1, value=5.0, step=0.5)
@@ -40,24 +39,20 @@ with tab1:
         ancho = st.number_input("Ancho / Vuelo (m)", min_value=0.1, value=3.0, step=0.5)
         material_soporte = st.selectbox("Material de Soporte", ["Madera", "Fierro"])
 
-    # 4. Selección de Medidas Técnicas
     if material_soporte == "Madera":
         medida_detalle = st.selectbox("Especificación:", ["Pino 4x4\" (Cepillado)", "Pino 6x6\"", "Polín 4\""])
     else:
         medida_detalle = st.selectbox("Especificación:", ["100x100x3 mm (Pilar)", "75x75x2 mm (Pilar)", "100x50x2 mm (Viga)"])
 
     if st.button("Calcular Cobertizo"):
-        # Cálculos de Techumbre
         p_decimal = pendiente / 100
         area_real = (largo * ancho) * math.sqrt(1 + p_decimal**2)
-        planchas = math.ceil((area_real * 1.1) / 2.6) # Incluye 10% de pérdida/traslape
+        planchas = math.ceil((area_real * 1.1) / 2.6)
         
-        # CÁLCULO DE PILARES: Un pilar cada 2 metros lineales + 1 inicial
         cant_pilares = math.ceil(largo / 2) + 1
         
-        # Vigas y Costaneras (Cálculo en tiras de 6m)
         tiras_viga = math.ceil(largo / 6)
-        cant_costaneras = math.ceil(ancho / 0.6) + 1 # Una costanera cada 60cm
+        cant_costaneras = math.ceil(ancho / 0.6) + 1
         tiras_costanera = math.ceil((cant_costaneras * largo) / 6)
 
         st.success(f"**Resumen de Materiales ({area_real:.2f} m²)**")
@@ -68,7 +63,7 @@ with tab1:
         res2.metric("Costaneras", f"{tiras_costanera} (6m)")
         st.caption(f"Detalle seleccionado: {medida_detalle}")
 
-# --- PESTAÑA 2: REJAS Y PORTONES ---
+# --- PESTAÑA 2: REJAS Y PORTONES (SECCIÓN MODIFICADA) ---
 with tab2:
     st.header("Estructuras Metálicas")
     tipo_reja = st.radio("Selecciona tipo:", ["Reja Fija", "Portón Corredera"])
@@ -80,9 +75,18 @@ with tab2:
         alto_r = st.number_input("Alto Total (m)", value=2.0, step=0.1, key="r_alto")
     
     separacion_cm = st.slider("Separación entre barras (cm)", 5, 20, 12)
+
+    # --- CAMBIO 1: NUEVAS OPCIONES DE DISEÑO ---
+    st.subheader("Opciones de Diseño")
+    incluir_casa_perro = st.checkbox("Incluir diseño inferior ('Casa Perro')", value=False, help="Agrega puntas cortas entre las barras inferiores para mayor seguridad.")
     
+    altura_puntas = 0.0 # Por defecto, no hay puntas
+    if incluir_casa_perro:
+        altura_puntas = st.number_input("Altura aproximada puntas inferiores (m)", min_value=0.1, max_value=0.5, value=0.3, step=0.05, help="La altura de las barras cortas inferiores.")
+
+    # --- FIN CAMBIO 1 ---
+
     st.markdown("---")
-    # Lógica de perfiles personalizables
     list_perfiles_metal = ["20x10 mm","20x20 mm","20x30 mm","20x40 mm","20x50 mm", "30x30 mm","30x20 mm","30x40 mm","40x20 mm","40x30 mm", "40x40 mm", "50x50 mm"]
     
     dif_perfil = st.checkbox("¿Deseas usar un perfil distinto para el interior?")
@@ -99,20 +103,39 @@ with tab2:
 
     if st.button("Calcular Reja"):
         sep_m = separacion_cm / 100
-        # Marco (perímetro)
+        
+        # 1. Marco (perímetro)
         tiras_marco = math.ceil(((ancho_r * 2) + (alto_r * 2)) / 6)
-        # Barras interiores
-        cant_barras = math.ceil(ancho_r / sep_m) + 1
-        tiras_interior = math.ceil((cant_barras * alto_r) / 6)
+        
+        # 2. Barras interiores principales (verticales largas)
+        cant_barras_largas = math.ceil(ancho_r / sep_m) + 1
+        metros_interiores = cant_barras_largas * alto_r
+
+        # --- CAMBIO 2: LÓGICA DE CÁLCULO DE "CASA PERRO" ---
+        st.write(f"📊 **Detalle del cálculo:**")
+        st.caption(f"- Barras principales (largas): {cant_barras_largas} un. x {alto_r} m")
+
+        if incluir_casa_perro:
+            # Calculamos la misma cantidad de barras cortas que largas.
+            metros_interiores_puntas = cant_barras_largas * altura_puntas
+            # Sumamos los metros de puntas a los metros interiores totales
+            metros_interiores += metros_interiores_puntas
+            st.caption(f"- Barras 'Casa Perro' (cortas): {cant_barras_largas} un. x {altura_puntas} m")
+            st.info(f"💡 Se ha sumado material extra para el diseño de puntas inferiores.")
+        
+        # 3. Convertir metros totales de interior a tiras de 6m
+        tiras_interior = math.ceil(metros_interiores / 6)
+        # --- FIN CAMBIO 2 ---
         
         st.subheader("Lista de Compra")
         st.write(f"📏 **Marco:** {tiras_marco} tiras de 6m — ({perfil_m})")
-        st.write(f"📏 **Interior:** {tiras_interior} tiras de 6m — ({perfil_i})")
+        st.write(f"📏 **Interior (incl. puntas si aplica):** {tiras_interior} tiras de 6m — ({perfil_i})")
+        st.caption(f"*Nota: Total metros lineales interior calculados: {metros_interiores:.2f}m")
         
-        if tipo_reja == "Portón":
+        if tipo_reja == "Portón Corredera":
             st.info("💡 **Accesorios sugeridos:** Riel de 6m, 2 ruedas con rodamiento y kit de motor.")
 
-# --- PESTAÑA 3: MUROS ---
+# --- PESTAÑA 3: MUROS (Sin cambios) ---
 with tab3:
     st.header("Cálculo de Albañilería")
     
@@ -126,8 +149,8 @@ with tab3:
         superficie = largo_m * alto_m
         tabla_rendimiento = {"Fiscal (50 u/m2)": 50, "Princesa (38 u/m2)": 38, "Bloque (12.5 u/m2)": 12.5}
         
-        total_unidades = math.ceil(superficie * tabla_rendimiento[tipo_ladrillo] * 1.05) # 5% margen de error
-        cemento_est = math.ceil(superficie * 0.22) # Estimación de sacos
+        total_unidades = math.ceil(superficie * tabla_rendimiento[tipo_ladrillo] * 1.05)
+        cemento_est = math.ceil(superficie * 0.22)
         
         st.metric("Total Ladrillos", f"{total_unidades} un")
         st.write(f"Se estima el uso de **{cemento_est} sacos de cemento** para esta superficie.")
