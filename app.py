@@ -205,13 +205,32 @@ with col_izq:
 
     # PESTAÑA 3: MUROS
     with tab3:
+# PESTAÑA 3: MUROS (REPARADA CON DOSIFICACIÓN DE MEZCLA)
         st.header("Cálculo de Albañilería")
         largo_m = st.number_input("Largo del Muro (m)", value=5.0, step=1.0)
         alto_m = st.number_input("Alto del Muro (m)", value=2.0, step=0.1)
         tipo_ladrillo = st.selectbox("Tipo de Ladrillo Oficial:", ["Fiscal (50 u/m2)", "Princesa (38 u/m2)", "Bloque (12.5 u/m2)"])
+        
         if st.button("📊 Calcular Muros"):
-            total_ladrillos = math.ceil((largo_m * alto_m) * {"Fiscal (50 u/m2)": 50, "Princesa (38 u/m2)": 38, "Bloque (12.5 u/m2)": 12.5}[tipo_ladrillo] * 1.05)
-            agregar_al_presupuesto([{"item": tipo_ladrillo, "cant": total_ladrillos, "unidad": "un"}], "Muro Ladrillo")
+            area_muro = largo_m * alto_m
+            factor_ladrillo = {"Fiscal (50 u/m2)": 50, "Princesa (38 u/m2)": 38, "Bloque (12.5 u/m2)": 12.5}[tipo_ladrillo]
+            
+            # Cálculo base de ladrillos con 5% de pérdida
+            total_ladrillos = math.ceil(area_muro * factor_ladrillo * 1.05)
+            
+            # Estimación de sacos de mortero de pega (25kg) según rendimiento por m2
+            # Fiscal consume más mezcla por junta, bloque e industrial rinden un poco más por área
+            factor_mortero = {"Fiscal (50 u/m2)": 3.0, "Princesa (38 u/m2)": 2.2, "Bloque (12.5 u/m2)": 1.8}[tipo_ladrillo]
+            total_sacos_mortero = math.ceil(area_muro * factor_mortero)
+            
+            # Lista completa de materiales para una albañilería real
+            lista_muro = [
+                {"item": tipo_ladrillo, "cant": total_ladrillos, "unidad": "un"},
+                {"item": "Saco Mortero de Pega Listo (25kg)", "cant": total_sacos_mortero, "unidad": "sacos"},
+                {"item": "Disco Desbaste 4 1/2\"", "cant": 1 if area_muro < 15 else 2, "unidad": "un"}
+            ]
+            
+            agregar_al_presupuesto(lista_muro, f"Muro de Albañilería ({largo_m}m x {alto_m}m)")
 
 # PANEL DE COSTOS Y EXPORTACIÓN CORREGIDO
 with col_der:
