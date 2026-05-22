@@ -1,0 +1,17 @@
+{
+  "short_name": "CubiApp",
+  "name": "Calculadora de Construcción & Cotizador",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/4230/4230119.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#1E3D59",
+  "theme_color": "#1E3D59",
+  "display": "standalone",
+  "orientation": "portrait"
+}

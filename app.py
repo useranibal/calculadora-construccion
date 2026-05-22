@@ -1,8 +1,29 @@
 import streamlit as st
 import math
-import os
-import io
 import urllib.parse
+import io
+
+# === CONFIGURACIÓN E INYECCIÓN DE PWA NATIVA ===
+st.set_page_config(page_title="Calculadora de Construcción", layout="wide", page_icon="🏗️")
+
+# Código HTML oculto para registrar el Manifest y el Service Worker en el teléfono
+pwa_code = """
+<link rel="manifest" href="./manifest.json">
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function() {
+      navigator.serviceWorker.register('./service-worker.js').then(function(registration) {
+        console.log('ServiceWorker registrado con éxito: ', registration.scope);
+      }, function(err) {
+        console.log('Error al registrar el ServiceWorker: ', err);
+      });
+    });
+  }
+</script>
+"""
+# Inyectamos de manera invisible en la app
+st.components.v1.html(pwa_code, height=0, width=0)
+# ===============================================
 
 # Intentar importar ReportLab para la generación del PDF
 try:
