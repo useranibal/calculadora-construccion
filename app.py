@@ -67,11 +67,13 @@ with col_izq:
     tab1, tab2, tab3 = st.tabs(["🏠 Cobertizos", "🚧 Rejas y Portones", "🧱 Muros de Albañilería"])
 
     # PESTAÑA 1: COBERTIZOS
+# PESTAÑA 1: COBERTIZOS (REPARADA CON ESQUELETO Y TORNILLOS)
     with tab1:
         st.header("Techumbres y Cobertizos")
         dict_imagenes_techos = {"1 Agua": "1 agua.jpg", "2 Aguas (Tipo A)": "2 aguas.png", "4 Aguas": "4 aguas.jpg"}
         tipo_techo = st.selectbox("Tipo de Geometría", list(dict_imagenes_techos.keys()))
         mostrar_imagen(dict_imagenes_techos[tipo_techo], f"Estructura: {tipo_techo}")
+        
         c1, c2 = st.columns(2)
         with c1:
             largo = st.number_input("Largo Cobertizo (m)", min_value=0.1, value=5.0, step=0.5, key="cob_largo")
@@ -79,15 +81,57 @@ with col_izq:
         with c2:
             ancho = st.number_input("Ancho / Vuelo (m)", min_value=0.1, value=3.0, step=0.5, key="cob_ancho")
             material_soporte = st.selectbox("Material de Soporte Principal", ["Madera", "Fierro"])
+            
         medida_detalle = st.selectbox("Especificación de Pilares:", ["30x30x2 mm (Pilar)", "40x40x2 mm (Pilar)", "75x75x2 mm (Pilar)"] if material_soporte=="Fierro" else ["Pino 4x4\" (Cepillado)", "Pino 6x6\""])
         poyos_concreto = st.checkbox("¿Pilares enterrados en concreto?", value=True, key="cob_poyos")
 
         if st.button("📊 Calcular Cobertizo"):
+            # 1. Área real considerando la inclinación de la techumbre
             area_real = (largo * ancho) * math.sqrt(1 + (pendiente/100)**2)
-            planchas = math.ceil((area_real * 1.1) / 2.6)
-            cant_pilares = math.ceil(largo / 2) + 1
-            lista_cob = [{"item": "Planchas de Techo (Zinc/Policarb standard)", "cant": planchas, "unidad": "un"}, {"item": medida_detalle, "cant": cant_pilares, "unidad": "un"}]
-            agregar_al_presupuesto(lista_cob, f"Cobertizo {tipo_techo}")
+            
+            # 2. Planchas (Rendimiento estándar aproximado por plancha de 2.5m o similar con traslape)
+            planchas = math.ceil((area_real * 1.15) / 2.6)
+            
+            # 3. Pilares (Postes verticales de apoyo cada ~2.5 metros a lo largo de ambos frentes si es auto soportado)
+            cant_pilares = (math.ceil(largo / 2.5) + 1) * 2
+            if tipo_techo == "2 Aguas (Tipo A)":
+                cant_pilares = math.ceil(largo / 2.5) + 1 + 2 # Ajuste estructural básico
+            if cant_pilares < 4: 
+                cant_pilares = 4
+                
+            # 4. Esqueleto del techo (Vigas y costaneras estimadas en metros lineales)
+            # Estimación matemática: para costaneras cada 70cm a lo largo y tijerales cada 80cm a lo ancho
+            metros_lineales_estructura = (largo * (math.ceil(ancho / 0.7) + 1)) + (ancho * (math.ceil(largo / 0.8) + 1))
+            
+            # Convertir metros lineales a tiras de 3.2 metros (largo comercial típico de maderas de estructura)
+            tiras_estructura_madera = math.ceil(metros_lineales_estructura / 3.2)
+            
+            # 5. Fijaciones (Tornillos Techeros: promedio 6 por plancha)
+            total_tornillos = planchas * 6
+            cajas_tornillos = math.ceil(total_tornillos / 100) # Cajas de 100 unidades
+
+            # Definición de la lista de materiales según el material base seleccionado
+            if material_soporte == "Madera":
+                lista_cob = [
+                    {"item": "Planchas de Techo (Zinc/Policarb standard)", "cant": planchas, "unidad": "un"},
+                    {"item": medida_detalle, "cant": cant_pilares, "unidad": "un"},
+                    {"item": "Pino 4x4\" (Cepillado)", "cant": tiras_estructura_madera, "unidad": "un (Estructura/Vigas)"}, # Usamos esta escuadría para vigas vigentes en la BD
+                    {"item": "Tornillo Techero Autoperforante 2\" (Caja 100 un)", "cant": cajas_tornillos, "unidad": "cajas"}
+                ]
+            else:
+                # Si elige Fierro, calculamos las tiras de 6m necesarias para el marco/vigas superiores
+                tiras_fierro_viga = math.ceil(metros_lineales_estructura / 6.0)
+                lista_cob = [
+                    {"item": "Planchas de Techo (Zinc/Policarb standard)", "cant": planchas, "unidad": "un"},
+                    {"item": medida_detalle, "cant": cant_pilares, "unidad": "tiras 6m"},
+                    {"item": "100x50x2 mm (Viga)", "cant": tiras_fierro_viga, "unidad": "tiras 6m"},
+                    {"item": "Tornillo Techero Autoperforante 2\" (Caja 100 un)", "cant": cajas_tornillos, "unidad": "cajas"}
+                ]
+                
+            if poyos_concreto:
+                lista_cob.append({"item": "Saco Hormigón Preparado (25kg)", "cant": cant_pilares * 2, "unidad": "sacos"})
+                
+            agregar_al_presupuesto(lista_cob, f"Cobertizo {tipo_techo} ({largo}m x {ancho}m)")
 
     # PESTAÑA 2: REJAS Y PORTONES (MODO INTELIGENTE DETECTA PORTÓN O REJA)
     with tab2:
