@@ -47,7 +47,6 @@ def mostrar_imagen(nombre_archivo, subtitulo):
     ruta_base = os.path.dirname(__file__)
     ruta_img = os.path.join(ruta_base, "img", nombre_archivo)
     if os.path.exists(ruta_img):
-        # Ajuste de tamaño ULTRA DISCRETO (50% de la pantalla)
         col_margen_izq, col_imagen, col_margen_der = st.columns([0.25, 0.5, 0.25])
         with col_imagen:
             st.image(ruta_img, caption=subtitulo, use_container_width=True)
@@ -81,12 +80,7 @@ with col_izq:
     # ----------------------------------------
     with tab1:
         st.header("Techumbres y Cobertizos")
-        
-        dict_imagenes_techos = {
-            "1 Agua": "1 agua.jpg", 
-            "2 Aguas (Tipo A)": "2 aguas.png", 
-            "4 Aguas": "4 aguas.jpg"
-        }
+        dict_imagenes_techos = {"1 Agua": "1 agua.jpg", "2 Aguas (Tipo A)": "2 aguas.png", "4 Aguas": "4 aguas.jpg"}
         tipo_techo = st.selectbox("Tipo de Geometría", list(dict_imagenes_techos.keys()))
         mostrar_imagen(dict_imagenes_techos[tipo_techo], f"Estructura: {tipo_techo}")
 
@@ -108,13 +102,11 @@ with col_izq:
         if st.button("📊 Calcular e Inyectar Cobertizo"):
             p_decimal = pendiente / 100
             area_real = (largo * ancho) * math.sqrt(1 + p_decimal**2)
-            
             planchas = math.ceil((area_real * 1.1) / 2.6)
             cant_pilares = math.ceil(largo / 2) + 1
             tiras_viga = math.ceil(largo / 6) * 2
             cant_costaneras = math.ceil(ancho / 0.6) + 1
             tiras_costanera = math.ceil((cant_costaneras * largo) / 6)
-            
             cajas_tornillos = math.ceil((planchas * 8) / 100)
             
             lista_cob = [
@@ -124,12 +116,10 @@ with col_izq:
                 {"item": "20x40 mm" if material_soporte == "Fierro" else "Pino 4x4\" (Cepillado)", "cant": tiras_costanera, "unidad": "tiras 6m"},
                 {"item": "Tornillo Techero Autoperforante 2\" (Caja 100 un)", "cant": cajas_tornillos, "unidad": "caja"}
             ]
-            
             if material_soporte == "Fierro":
                 lista_cob.append({"item": "Kilo Electrodo E6011 3/32\"", "cant": 2, "unidad": "kg"})
                 lista_cob.append({"item": "Disco Corte 4 1/2\" (1mm)", "cant": 2, "unidad": "un"})
                 lista_cob.append({"item": "Anticorrosivo (Galón 3.8L)", "cant": 1, "unidad": "galón"})
-            
             if poyos_concreto:
                 sacos_hormigon = math.ceil(cant_pilares * 1.5)
                 lista_cob.append({"item": "Saco Hormigón Preparado (25kg)", "cant": sacos_hormigon, "unidad": "sacos"})
@@ -152,7 +142,7 @@ with col_izq:
         cr1, cr2 = st.columns(2)
         with cr1:
             ancho_r = st.number_input("Ancho Total (m)", value=3.0, step=0.5, key="r_ancho")
-            separacion_cm = st.slider("Separación entre barras (cm)", 5, 20, 12)
+            separacion_cm = st.slider("Separación entre barras (cm)", 5, 20, 8) # Ajustado a 8 por tu última prueba
         with cr2:
             alto_r = st.number_input("Alto Total (m)", value=2.0, step=0.1, key="r_alto")
             incluye_puerta = st.checkbox("¿Lleva puerta peatonal / cerradura incorporada?", value=False)
@@ -165,16 +155,24 @@ with col_izq:
         list_perfiles_metal = ["20x10 mm","20x20 mm","20x30 mm","20x40 mm","20x50 mm", "30x30 mm","40x40 mm", "50x50 mm"]
         
         dif_perfil = st.checkbox("¿Usar perfiles más delgados en barras interiores?", value=True)
+        
         p_col1, p_col2 = st.columns(2)
         with p_col1:
-            perfil_m = st.selectbox("Perfil del Marco Exterior:", list_perfiles_metal, index=3)
-            pilar_sostenedor = st.selectbox("Perfil Pilares de Sujeción a Tierra:", ["75x75x2 mm (Pilar)", "100x100x3 mm (Pilar)"])
-        with p_col2:
+            perfil_m = st.selectbox("Perfil del Marco Exterior:", list_perfiles_metal, index=2) # 20x30 mm por defecto
             if dif_perfil:
-                perfil_i = st.selectbox("Perfil Barras Interiores:", list_perfiles_metal, index=1)
+                perfil_i = st.selectbox("Perfil Barras Interiores:", list_perfiles_metal, index=1) # 20x20 mm
             else:
                 perfil_i = perfil_m
-            cant_pilares_r = st.number_input("Cantidad de pilares a enterrar", min_value=1, value=2, step=1)
+        
+        with p_col2:
+            # NUEVO INTERRUPTOR INTELIGENTE PARA CONTROLAR LOS PILARETES PESADOS
+            incluye_pilares_tierra = st.checkbox("¿Incluye pilares de sujeción enterrados a tierra?", value=False)
+            if incluye_pilares_tierra:
+                pilar_sostenedor = st.selectbox("Perfil Pilares de Sujeción:", ["75x75x2 mm (Pilar)", "100x100x3 mm (Pilar)"])
+                cant_pilares_r = st.number_input("Cantidad de pilares a enterrar", min_value=1, value=2, step=1)
+            else:
+                pilar_sostenedor = None
+                cant_pilares_r = 0
 
         if st.button("📊 Calcular e Inyectar Estructura Metálica"):
             metros_marco = (ancho_r * 2) + (alto_r * 2)
@@ -206,9 +204,8 @@ with col_izq:
 
             total_tiras_interiores_netas = tiras_interiores_largas_netas + tiras_interiores_cortas_netas
             tiras_interior = math.ceil(total_tiras_interiores_netas * 1.05)
-
-            tiras_pilares = math.ceil((cant_pilares_r * (alto_r + 0.5)) / 6.0)
             
+            # Cálculo de soldaduras e insumos básicos
             total_uniones = (num_barrotes * 2) + (num_barrotes_cortos * 2)
             kilos_soldadura_base = total_uniones * 0.015 
             kilos_electrodo = math.ceil(kilos_soldadura_base + 1.0)
@@ -217,15 +214,18 @@ with col_izq:
             discos_corte = math.ceil(total_barras_a_cortar / 8)  
             discos_desbaste = 1 if tiras_interior < 15 else 2
             
-            metros_lineales_totales = (num_barrotes * alto_r) + (num_barrotes_cortos * altura_puntas) + metros_marco + (cant_pilares_r * (alto_r + 0.5))
+            # Metros lineales totales para pintura
+            metros_lineales_totales = (num_barrotes * alto_r) + (num_barrotes_cortos * altura_puntas) + metros_marco
+            if incluye_pilares_tierra:
+                metros_lineales_totales += (cant_pilares_r * (alto_r + 0.5))
+                
             superficie_real_fierro_m2 = metros_lineales_totales * 0.15
-            galones_calculados = (superficie_real_fierro_m2 * 2) / 30.0
-            galones_pintura = math.ceil(galones_calculados)
+            galones_pintura = math.ceil((superficie_real_fierro_m2 * 2) / 30.0)
             
+            # Armando la lista de materiales base
             lista_reja = [
                 {"item": perfil_m, "cant": tiras_marco, "unidad": "tiras 6m"},
                 {"item": perfil_i, "cant": tiras_interior, "unidad": "tiras 6m"},
-                {"item": pilar_sostenedor, "cant": tiras_pilares, "unidad": "tiras 6m"},
                 {"item": "Kilo Electrodo E6011 3/32\"", "cant": kilos_electrodo, "unidad": "kg"},
                 {"item": "Disco Corte 4 1/2\" (1mm)", "cant": discos_corte, "unidad": "un"},
                 {"item": "Disco Desbaste 4 1/2\"", "cant": discos_desbaste, "unidad": "un"},
@@ -234,6 +234,13 @@ with col_izq:
                 {"item": "Brocha 3\"", "cant": 1, "unidad": "un"}
             ]
             
+            # INYECTAR SÓLO SI EL USUARIO ACTIVÓ LOS PILARES
+            if incluye_pilares_tierra and pilar_sostenedor:
+                tiras_pilares = math.ceil((cant_pilares_r * (alto_r + 0.5)) / 6.0)
+                lista_reja.append({"item": pilar_sostenedor, "cant": tiras_pilares, "unidad": "tiras 6m"})
+                sacos_concreto = cant_pilares_r * 2 
+                lista_reja.append({"item": "Saco Hormigón Preparado (25kg)", "cant": sacos_concreto, "unidad": "sacos"})
+            
             if incluye_puerta:
                 lista_reja.append({"item": "Pomel de 3\" (un)", "cant": 3, "unidad": "un"})
                 lista_reja.append({"item": "Cerradura de Sobreponer Poli", "cant": 1, "unidad": "un"})
@@ -241,9 +248,6 @@ with col_izq:
             if tipo_reja == "Portón Corredera":
                 lista_reja.append({"item": "Kit Ruedas y Polines Portón", "cant": 1, "unidad": "kit"})
                 
-            sacos_concreto = cant_pilares_r * 2 
-            lista_reja.append({"item": "Saco Hormigón Preparado (25kg)", "cant": sacos_concreto, "unidad": "sacos"})
-            
             agregar_al_presupuesto(lista_reja, f"{tipo_reja} ({ancho_r}x{alto_r}m)")
 
     # ----------------------------------------
@@ -254,13 +258,10 @@ with col_izq:
         largo_m = st.number_input("Largo del Muro (m)", value=5.0, step=1.0, key="m_largo")
         alto_m = st.number_input("Alto del Muro (m)", value=2.0, step=0.1, key="m_alto")
         tipo_ladrillo = st.selectbox("Tipo de Ladrillo Oficial:", ["Fiscal (50 u/m2)", "Princesa (38 u/m2)", "Bloque (12.5 u/m2)"])
-        
-        st.caption("Nota: El cálculo incluye un 5% extra por pérdidas de material en obra e incorpora mortero listo para facilidad en terreno.")
 
         if st.button("📊 Calcular e Inyectar Muros"):
             superficie = largo_m * alto_m
             tabla = {"Fiscal (50 u/m2)": 50, "Princesa (38 u/m2)": 38, "Bloque (12.5 u/m2)": 12.5}
-            
             total_ladrillos = math.ceil(superficie * tabla[tipo_ladrillo] * 1.05)
             sacos_mortero = math.ceil(superficie * 1.3)
             
@@ -270,15 +271,12 @@ with col_izq:
             ]
             agregar_al_presupuesto(lista_muro, f"Muro de {tipo_ladrillo} ({superficie:.1f} m²)")
 
-
 # ==========================================
 # PANEL DE COSTOS Y GENERACIÓN DE COTIZACIONES (DERECHA)
 # ==========================================
 with col_der:
     st.header("💰 Lista de Precios e Insumos")
-    
     with st.expander("🛠️ Ver / Modificar Precios Unitarios (CLP)"):
-        st.info("Ajusta los costos reales de tu proveedor local. Se usarán para el cálculo total de inmediato.")
         for k in st.session_state.precios.keys():
             st.session_state.precios[k] = st.number_input(f"{k}:", value=int(st.session_state.precios[k]), step=100)
 
@@ -289,7 +287,6 @@ with col_der:
         st.warning("Aún no has cubicado ningún ítem. Selecciona una pestaña a la izquierda y presiona 'Calcular e Inyectar'.")
     else:
         st.success(f"**Proyecto Activo:** {st.session_state.tipo_proyecto}")
-        
         total_materiales = 0
         tabla_datos = []
         
@@ -309,7 +306,6 @@ with col_der:
             })
             
         st.table(tabla_datos)
-        
         mano_obra = int(total_materiales * 0.75)
         total_general = total_materiales + mano_obra
         
@@ -320,7 +316,6 @@ with col_der:
         
         st.markdown("---")
         st.subheader("📲 Compartir y Exportar")
-        
         nom_cliente = st.text_input("Nombre del Cliente:", value="Juan Pérez")
         
         msg_whatsapp = (
@@ -335,11 +330,8 @@ with col_der:
             f"Los materiales consideran todos los perfiles de acero/madera, pernos techeros, anticorrosivo, discos de corte, electrodos y concreto de fundación correspondientes.\n"
             f"Le enviaré el PDF formal con el detalle de cada insumo a continuación. ¡Quedo atento a sus comentarios!"
         )
-        
         url_wa = f"https://wa.me/?text={urllib.parse.quote(msg_whatsapp)}"
         st.markdown(f'<a href="{url_wa}" target="_blank"><button style="background-color:#25D366; color:white; border:none; padding:10px 20px; border-radius:5px; width:100%; font-weight:bold; cursor:pointer;">🟢 Enviar Resumen de Presupuesto por WhatsApp</button></a>', unsafe_allow_html=True)
-        
-        st.caption("Nota: Presiona el botón verde para enviar los valores de inmediato. El archivo PDF detallado lo puedes descargar abajo y adjuntarlo en el mismo chat.")
 
         if REPORTLAB_AVAILABLE:
             def generar_pdf_reportlab():
@@ -353,7 +345,7 @@ with col_der:
                 story.append(Paragraph("🏗️ COTIZACIÓN FORMAL DE CONSTRUCCIÓN", style_titulo))
                 story.append(Paragraph(f"<b>Proyecto:</b> {st.session_state.tipo_proyecto}", style_body))
                 story.append(Paragraph(f"<b>Cliente:</b> {nom_cliente}", style_body))
-                story.append(Paragraph("<b>Validez de la oferta:</b> 15 días (Sujeto a variación de stock de proveedores)", style_body))
+                story.append(Paragraph("<b>Validez de la oferta:</b> 15 días", style_body))
                 story.append(Spacer(1, 15))
                 story.append(Paragraph("📋 Detalle de Insumos y Materiales Asignados:", style_h2))
                 data_tabla_pdf = [["Descripción de Material / Insumo", "Cantidad", "P. Unitario", "Subtotal"]]
@@ -368,15 +360,10 @@ with col_der:
                 t.setStyle(TableStyle([
                     ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#1E3D59')),
                     ('TEXTCOLOR', (0,0), (-1,0), colors.white),
-                    ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-                    ('FONTSIZE', (0,0), (-1,0), 10),
-                    ('ALIGN', (0,0), (-1,-1), 'LEFT'),
-                    ('ALIGN', (2,1), (-1,-1), 'RIGHT'),
-                    ('BOTTOMPADDING', (0,0), (-1,0), 8),
-                    ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.HexColor('#F5F7FA'), colors.white]),
                     ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#E2E8F0')),
-                    ('FONTNAME', (0,1), (-1,-1), 'Helvetica'),
-                    ('FONTSIZE', (0,1), (-1,-1), 9),
+                    ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.HexColor('#F5F7FA'), colors.white]),
+                    ('ALIGN', (2,1), (-1,-1), 'RIGHT'),
+                    ('FONTSIZE', (0,0), (-1,-1), 9),
                 ]))
                 story.append(t)
                 story.append(Spacer(1, 20))
@@ -388,22 +375,15 @@ with col_der:
                 ]
                 tr = Table(resumen_pdf, colWidths=[350, 160])
                 tr.setStyle(TableStyle([
-                    ('FONTNAME', (0,0), (-1,-2), 'Helvetica'),
                     ('FONTNAME', (0,2), (-1,2), 'Helvetica-Bold'),
-                    ('FONTSIZE', (0,2), (-1,2), 12),
-                    ('TEXTCOLOR', (0,2), (-1,2), colors.HexColor('#145A32')),
                     ('ALIGN', (1,0), (1,-1), 'RIGHT'),
                     ('LINEABOVE', (0,2), (-1,2), 1.5, colors.HexColor('#1E3D59')),
-                    ('TOPPADDING', (0,0), (-1,-1), 6),
                 ]))
                 story.append(tr)
-                story.append(Spacer(1, 35))
-                story.append(Paragraph("____________________________________________", style_body))
-                story.append(Paragraph("<b>Firma y Timbre del Contratista</b>", style_body))
-                story.append(Paragraph("Presupuesto automático generado por Calculadora Pro Terreno.", style_body))
                 doc.build(story)
                 buffer.seek(0)
                 return buffer.getvalue()
+            
             pdf_data = generar_pdf_reportlab()
             st.download_button(
                 label="📥 Descargar Ficha de Cotización Formal (PDF)",
@@ -412,5 +392,3 @@ with col_der:
                 mime="application/pdf",
                 use_container_width=True
             )
-        else:
-            st.info("Para activar la descarga de PDFs impecables en local, recuerda instalar: `pip install reportlab`")
