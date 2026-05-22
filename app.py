@@ -42,13 +42,13 @@ if "precios" not in st.session_state:
         "Saco Hormigón Preparado (25kg)": 4490
     }
 
-# --- FUNCIÓN PARA CARGAR IMÁGENES CON TAMAÑO OPTIMIZADO ---
+# --- FUNCIÓN PARA CARGAR IMÁGENES CON TAMAÑO ULTRA-COMPACTO ---
 def mostrar_imagen(nombre_archivo, subtitulo):
     ruta_base = os.path.dirname(__file__)
     ruta_img = os.path.join(ruta_base, "img", nombre_archivo)
     if os.path.exists(ruta_img):
-        # Reducción inteligente usando columnas laterales como márgenes
-        col_margen_izq, col_imagen, col_margen_der = st.columns([0.2, 0.6, 0.2])
+        # Ajuste de tamaño ULTRA DISCRETO (50% de la pantalla)
+        col_margen_izq, col_imagen, col_margen_der = st.columns([0.25, 0.5, 0.25])
         with col_imagen:
             st.image(ruta_img, caption=subtitulo, use_container_width=True)
     else:
@@ -177,11 +177,9 @@ with col_izq:
             cant_pilares_r = st.number_input("Cantidad de pilares a enterrar", min_value=1, value=2, step=1)
 
         if st.button("📊 Calcular e Inyectar Estructura Metálica"):
-            # --- 1. CÁLCULO DEL MARCO ---
             metros_marco = (ancho_r * 2) + (alto_r * 2)
             tiras_marco = math.ceil(metros_marco / 6.0)
             
-            # --- 2. CÁLCULO DE BARROTES INTERIORES (CORTES REALES) ---
             ancho_cm = ancho_r * 100
             ancho_perfil_cm = 2.0 
             espacio_total_barrote = separacion_cm + ancho_perfil_cm
@@ -209,10 +207,8 @@ with col_izq:
             total_tiras_interiores_netas = tiras_interiores_largas_netas + tiras_interiores_cortas_netas
             tiras_interior = math.ceil(total_tiras_interiores_netas * 1.05)
 
-            # --- 3. CÁLCULO DE PILARES ---
             tiras_pilares = math.ceil((cant_pilares_r * (alto_r + 0.5)) / 6.0)
             
-            # --- 4. CÁLCULO DE SOLDADURA COMPACTA ---
             total_uniones = (num_barrotes * 2) + (num_barrotes_cortos * 2)
             kilos_soldadura_base = total_uniones * 0.015 
             kilos_electrodo = math.ceil(kilos_soldadura_base + 1.0)
@@ -221,7 +217,6 @@ with col_izq:
             discos_corte = math.ceil(total_barras_a_cortar / 8)  
             discos_desbaste = 1 if tiras_interior < 15 else 2
             
-            # --- 5. CÁLCULO REAL DE RENDIMIENTO DE PINTURA ---
             metros_lineales_totales = (num_barrotes * alto_r) + (num_barrotes_cortos * altura_puntas) + metros_marco + (cant_pilares_r * (alto_r + 0.5))
             superficie_real_fierro_m2 = metros_lineales_totales * 0.15
             galones_calculados = (superficie_real_fierro_m2 * 2) / 30.0
@@ -328,7 +323,6 @@ with col_der:
         
         nom_cliente = st.text_input("Nombre del Cliente:", value="Juan Pérez")
         
-        # --- GENERACIÓN DE MENSAJE WHATSAPP ---
         msg_whatsapp = (
             f"⚡ *COTIZACIÓN DE TRABAJO* ⚡\n"
             f"Estimado(a) {nom_cliente},\n"
@@ -347,27 +341,21 @@ with col_der:
         
         st.caption("Nota: Presiona el botón verde para enviar los valores de inmediato. El archivo PDF detallado lo puedes descargar abajo y adjuntarlo en el mismo chat.")
 
-        # --- GENERACIÓN DE ARCHIVO PDF CON REPORTLAB ---
         if REPORTLAB_AVAILABLE:
             def generar_pdf_reportlab():
                 buffer = io.BytesIO()
                 doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=40)
                 story = []
-                
                 styles = getSampleStyleSheet()
-                
                 style_titulo = ParagraphStyle('Titulo', parent=styles['Heading1'], fontSize=22, textColor=colors.HexColor('#1E3D59'), spaceAfter=15)
                 style_h2 = ParagraphStyle('Sub', parent=styles['Heading2'], fontSize=14, textColor=colors.HexColor('#17B890'), spaceAfter=10)
                 style_body = ParagraphStyle('Cuerpo', parent=styles['BodyText'], fontSize=10, spaceAfter=8)
-                
                 story.append(Paragraph("🏗️ COTIZACIÓN FORMAL DE CONSTRUCCIÓN", style_titulo))
                 story.append(Paragraph(f"<b>Proyecto:</b> {st.session_state.tipo_proyecto}", style_body))
                 story.append(Paragraph(f"<b>Cliente:</b> {nom_cliente}", style_body))
                 story.append(Paragraph("<b>Validez de la oferta:</b> 15 días (Sujeto a variación de stock de proveedores)", style_body))
                 story.append(Spacer(1, 15))
-                
                 story.append(Paragraph("📋 Detalle de Insumos y Materiales Asignados:", style_h2))
-                
                 data_tabla_pdf = [["Descripción de Material / Insumo", "Cantidad", "P. Unitario", "Subtotal"]]
                 for m in st.session_state.carrito:
                     n = m["item"]
@@ -376,7 +364,6 @@ with col_der:
                     pu = st.session_state.precios.get(n, 5000)
                     sb = c * pu
                     data_tabla_pdf.append([n, f"{c} {u}", f"${pu:,}", f"${sb:,}"])
-                    
                 t = Table(data_tabla_pdf, colWidths=[240, 90, 90, 90])
                 t.setStyle(TableStyle([
                     ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#1E3D59')),
@@ -393,7 +380,6 @@ with col_der:
                 ]))
                 story.append(t)
                 story.append(Spacer(1, 20))
-                
                 story.append(Paragraph("🧾 Resumen Comercial Final del Proyecto", style_h2))
                 resumen_pdf = [
                     ["Total Neto de Materiales e Insumos indispensables:", f"${total_materiales:,}"],
@@ -411,16 +397,13 @@ with col_der:
                     ('TOPPADDING', (0,0), (-1,-1), 6),
                 ]))
                 story.append(tr)
-                
                 story.append(Spacer(1, 35))
                 story.append(Paragraph("____________________________________________", style_body))
                 story.append(Paragraph("<b>Firma y Timbre del Contratista</b>", style_body))
                 story.append(Paragraph("Presupuesto automático generado por Calculadora Pro Terreno.", style_body))
-                
                 doc.build(story)
                 buffer.seek(0)
                 return buffer.getvalue()
-
             pdf_data = generar_pdf_reportlab()
             st.download_button(
                 label="📥 Descargar Ficha de Cotización Formal (PDF)",
