@@ -204,8 +204,8 @@ with col_izq:
             agregar_al_presupuesto(lista_reja, f"{tipo_reja} ({ancho_total}m x {alto_r}m)")
 
     # PESTAÑA 3: MUROS
+# PESTAÑA 3: MUROS (SOLO TEÓRICO BÁSICO)
     with tab3:
-# PESTAÑA 3: MUROS (REPARADA CON DOSIFICACIÓN DE MEZCLA)
         st.header("Cálculo de Albañilería")
         largo_m = st.number_input("Largo del Muro (m)", value=5.0, step=1.0)
         alto_m = st.number_input("Alto del Muro (m)", value=2.0, step=0.1)
@@ -219,15 +219,13 @@ with col_izq:
             total_ladrillos = math.ceil(area_muro * factor_ladrillo * 1.05)
             
             # Estimación de sacos de mortero de pega (25kg) según rendimiento por m2
-            # Fiscal consume más mezcla por junta, bloque e industrial rinden un poco más por área
             factor_mortero = {"Fiscal (50 u/m2)": 3.0, "Princesa (38 u/m2)": 2.2, "Bloque (12.5 u/m2)": 1.8}[tipo_ladrillo]
             total_sacos_mortero = math.ceil(area_muro * factor_mortero)
             
-            # Lista completa de materiales para una albañilería real
+            # Lista estrictamente teórica: solo lo esencial que compone el muro
             lista_muro = [
                 {"item": tipo_ladrillo, "cant": total_ladrillos, "unidad": "un"},
-                {"item": "Saco Mortero de Pega Listo (25kg)", "cant": total_sacos_mortero, "unidad": "sacos"},
-                {"item": "Disco Desbaste 4 1/2\"", "cant": 1 if area_muro < 15 else 2, "unidad": "un"}
+                {"item": "Saco Mortero de Pega Listo (25kg)", "cant": total_sacos_mortero, "unidad": "sacos"}
             ]
             
             agregar_al_presupuesto(lista_muro, f"Muro de Albañilería ({largo_m}m x {alto_m}m)")
