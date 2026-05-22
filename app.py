@@ -18,7 +18,6 @@ except ImportError:
 st.set_page_config(page_title="Calculadora de Materiales & Cotizador Pro", layout="wide", page_icon="🏗️")
 
 # --- BASE DE DATOS DE PRECIOS INTERNOS (REFERENCIA CHILE 2026) ---
-# Valores promedio estimados en CLP (Pesos Chilenos) actualizables por el maestro/contratista
 if "precios" not in st.session_state:
     st.session_state.precios = {
         # Fierros y Estructuras (Por tira de 6m)
@@ -43,12 +42,15 @@ if "precios" not in st.session_state:
         "Saco Hormigón Preparado (25kg)": 4490
     }
 
-# --- FUNCIÓN PARA CARGAR IMÁGENES SEGURAS ---
+# --- FUNCIÓN PARA CARGAR IMÁGENES CON TAMAÑO OPTIMIZADO ---
 def mostrar_imagen(nombre_archivo, subtitulo):
     ruta_base = os.path.dirname(__file__)
     ruta_img = os.path.join(ruta_base, "img", nombre_archivo)
     if os.path.exists(ruta_img):
-        st.image(ruta_img, caption=subtitulo, use_container_width=True)
+        # Reducción inteligente usando columnas laterales como márgenes
+        col_margen_izq, col_imagen, col_margen_der = st.columns([0.2, 0.6, 0.2])
+        with col_imagen:
+            st.image(ruta_img, caption=subtitulo, use_container_width=True)
     else:
         st.info(f"💡 Visualización: {subtitulo} (Para ver croquis real, añade '{nombre_archivo}' en carpeta 'img')")
 
@@ -69,7 +71,6 @@ def agregar_al_presupuesto(lista_materiales, tipo_p):
 st.title("🏗️ Calculadora de Construcción & Cotizador Inteligente")
 st.write("Optimizado para cubicar materiales en terreno, calcular mano de obra e imprimir PDF con costos reales de Chile.")
 
-# Layout principal: Izquierda controles/cálculos, Derecha Panel de Precios y Resultados permanentes
 col_izq, col_der = st.columns([1.6, 1.4])
 
 with col_izq:
@@ -108,15 +109,13 @@ with col_izq:
             p_decimal = pendiente / 100
             area_real = (largo * ancho) * math.sqrt(1 + p_decimal**2)
             
-            # Cálculos base
-            planchas = math.ceil((area_real * 1.1) / 2.6) # 10% pérdida
+            planchas = math.ceil((area_real * 1.1) / 2.6)
             cant_pilares = math.ceil(largo / 2) + 1
-            tiras_viga = math.ceil(largo / 6) * 2 # Mínimo dos vigas cargadoras
+            tiras_viga = math.ceil(largo / 6) * 2
             cant_costaneras = math.ceil(ancho / 0.6) + 1
             tiras_costanera = math.ceil((cant_costaneras * largo) / 6)
             
-            # Insumos calculados automáticamente
-            cajas_tornillos = math.ceil((planchas * 8) / 100) # 8 pernos por plancha promedio
+            cajas_tornillos = math.ceil((planchas * 8) / 100)
             
             lista_cob = [
                 {"item": "Planchas de Techo (Zinc/Policarb standard)", "cant": planchas, "unidad": "un"},
@@ -127,13 +126,11 @@ with col_izq:
             ]
             
             if material_soporte == "Fierro":
-                # Consumibles metalúrgicos básicos para el cobertizo
                 lista_cob.append({"item": "Kilo Electrodo E6011 3/32\"", "cant": 2, "unidad": "kg"})
                 lista_cob.append({"item": "Disco Corte 4 1/2\" (1mm)", "cant": 2, "unidad": "un"})
                 lista_cob.append({"item": "Anticorrosivo (Galón 3.8L)", "cant": 1, "unidad": "galón"})
             
             if poyos_concreto:
-                # 1.5 sacos de 25kg de hormigón preparado por poyo de pilar
                 sacos_hormigon = math.ceil(cant_pilares * 1.5)
                 lista_cob.append({"item": "Saco Hormigón Preparado (25kg)", "cant": sacos_hormigon, "unidad": "sacos"})
 
@@ -155,7 +152,7 @@ with col_izq:
         cr1, cr2 = st.columns(2)
         with cr1:
             ancho_r = st.number_input("Ancho Total (m)", value=3.0, step=0.5, key="r_ancho")
-            separacion_cm = st.slider("Separación entre barras barras (cm)", 5, 20, 12)
+            separacion_cm = st.slider("Separación entre barras (cm)", 5, 20, 12)
         with cr2:
             alto_r = st.number_input("Alto Total (m)", value=2.0, step=0.1, key="r_alto")
             incluye_puerta = st.checkbox("¿Lleva puerta peatonal / cerradura incorporada?", value=False)
@@ -170,42 +167,65 @@ with col_izq:
         dif_perfil = st.checkbox("¿Usar perfiles más delgados en barras interiores?", value=True)
         p_col1, p_col2 = st.columns(2)
         with p_col1:
-            perfil_m = st.selectbox("Perfil del Marco Exterior:", list_perfiles_metal, index=3) # 20x40
+            perfil_m = st.selectbox("Perfil del Marco Exterior:", list_perfiles_metal, index=3)
             pilar_sostenedor = st.selectbox("Perfil Pilares de Sujeción a Tierra:", ["75x75x2 mm (Pilar)", "100x100x3 mm (Pilar)"])
         with p_col2:
             if dif_perfil:
-                perfil_i = st.selectbox("Perfil Barras Interiores:", list_perfiles_metal, index=1) # 20x20
+                perfil_i = st.selectbox("Perfil Barras Interiores:", list_perfiles_metal, index=1)
             else:
                 perfil_i = perfil_m
             cant_pilares_r = st.number_input("Cantidad de pilares a enterrar", min_value=1, value=2, step=1)
 
         if st.button("📊 Calcular e Inyectar Estructura Metálica"):
-            sep_m = separacion_cm / 100
-            
-            # Perímetro marco
+            # --- 1. CÁLCULO DEL MARCO ---
             metros_marco = (ancho_r * 2) + (alto_r * 2)
-            tiras_marco = math.ceil(metros_marco / 6)
+            tiras_marco = math.ceil(metros_marco / 6.0)
             
-            # Barras interiores
-            cant_barras_largas = math.ceil(ancho_r / sep_m) + 1
-            metros_interiores = cant_barras_largas * alto_r
-
+            # --- 2. CÁLCULO DE BARROTES INTERIORES (CORTES REALES) ---
+            ancho_cm = ancho_r * 100
+            ancho_perfil_cm = 2.0 
+            espacio_total_barrote = separacion_cm + ancho_perfil_cm
+            num_barrotes = math.ceil(ancho_cm / espacio_total_barrote)
+            
             if incluir_casa_perro:
-                # Duplica densidad en base corta
-                metros_interiores += (cant_barras_largas * altura_puntas)
+                num_barrotes_cortos = num_barrotes
+            else:
+                num_barrotes_cortos = 0
+
+            cortes_largos_por_tira = math.floor(6.0 / alto_r)
+            if cortes_largos_por_tira > 0:
+                tiras_interiores_largas_netas = num_barrotes / cortes_largos_por_tira
+            else:
+                tiras_interiores_largas_netas = num_barrotes * (alto_r / 6.0)
+
+            tiras_interiores_cortas_netas = 0
+            if incluir_casa_perro and altura_puntas > 0:
+                cortes_cortos_por_tira = math.floor(6.0 / altura_puntas)
+                if cortes_cortos_por_tira > 0:
+                    tiras_interiores_cortas_netas = num_barrotes_cortos / cortes_cortos_por_tira
+                else:
+                    tiras_interiores_cortas_netas = num_barrotes_cortos * (altura_puntas / 6.0)
+
+            total_tiras_interiores_netas = tiras_interiores_largas_netas + tiras_interiores_cortas_netas
+            tiras_interior = math.ceil(total_tiras_interiores_netas * 1.05)
+
+            # --- 3. CÁLCULO DE PILARES ---
+            tiras_pilares = math.ceil((cant_pilares_r * (alto_r + 0.5)) / 6.0)
             
-            tiras_interior = math.ceil(metros_interiores / 6)
-            tiras_pilares = math.ceil((cant_pilares_r * (alto_r + 0.5)) / 6) # Súmale 50cm enterrados
+            # --- 4. CÁLCULO DE SOLDADURA COMPACTA ---
+            total_uniones = (num_barrotes * 2) + (num_barrotes_cortos * 2)
+            kilos_soldadura_base = total_uniones * 0.015 
+            kilos_electrodo = math.ceil(kilos_soldadura_base + 1.0)
             
-            # Cubicando insumos proporcionales precisos
-            total_tiras = tiras_marco + tiras_interior + tiras_pilares
-            kilos_electrodo = math.ceil(total_tiras * 0.35) # factor proporcional empírico en terreno
-            discos_corte = math.ceil(total_tiras / 2)
-            discos_desbaste = 1 if total_tiras < 8 else 2
+            total_barras_a_cortar = num_barrotes + num_barrotes_cortos + (tiras_marco * 2)
+            discos_corte = math.ceil(total_barras_a_cortar / 8)  
+            discos_desbaste = 1 if tiras_interior < 15 else 2
             
-            # Rendimiento pintura: 1 galón rinde 30 metros de perfil lineal aprox.
-            metros_totales_lineales = (tiras_marco + tiras_interior + tiras_pilares) * 6
-            galones_pintura = math.ceil(metros_totales_lineales / 35)
+            # --- 5. CÁLCULO REAL DE RENDIMIENTO DE PINTURA ---
+            metros_lineales_totales = (num_barrotes * alto_r) + (num_barrotes_cortos * altura_puntas) + metros_marco + (cant_pilares_r * (alto_r + 0.5))
+            superficie_real_fierro_m2 = metros_lineales_totales * 0.15
+            galones_calculados = (superficie_real_fierro_m2 * 2) / 30.0
+            galones_pintura = math.ceil(galones_calculados)
             
             lista_reja = [
                 {"item": perfil_m, "cant": tiras_marco, "unidad": "tiras 6m"},
@@ -226,8 +246,7 @@ with col_izq:
             if tipo_reja == "Portón Corredera":
                 lista_reja.append({"item": "Kit Ruedas y Polines Portón", "cant": 1, "unidad": "kit"})
                 
-            # Cemento para fundaciones de pilares
-            sacos_concreto = cant_pilares_r * 2 # 2 sacos de hormigón preparado de 25kg por base de reja pesada
+            sacos_concreto = cant_pilares_r * 2 
             lista_reja.append({"item": "Saco Hormigón Preparado (25kg)", "cant": sacos_concreto, "unidad": "sacos"})
             
             agregar_al_presupuesto(lista_reja, f"{tipo_reja} ({ancho_r}x{alto_r}m)")
@@ -248,9 +267,6 @@ with col_izq:
             tabla = {"Fiscal (50 u/m2)": 50, "Princesa (38 u/m2)": 38, "Bloque (12.5 u/m2)": 12.5}
             
             total_ladrillos = math.ceil(superficie * tabla[tipo_ladrillo] * 1.05)
-            
-            # En Chile para simplificar la logística en terreno y evitar camiones de arena sucia,
-            # se cubica con Sacos de Mortero de Pega Listo de 25kg. Aprox 1.3 sacos por m2 de muro standard.
             sacos_mortero = math.ceil(superficie * 1.3)
             
             lista_muro = [
@@ -266,7 +282,6 @@ with col_izq:
 with col_der:
     st.header("💰 Lista de Precios e Insumos")
     
-    # Acordeón para editar la lista interna si los precios en Sodimac/Easy varían
     with st.expander("🛠️ Ver / Modificar Precios Unitarios (CLP)"):
         st.info("Ajusta los costos reales de tu proveedor local. Se usarán para el cálculo total de inmediato.")
         for k in st.session_state.precios.keys():
@@ -280,7 +295,6 @@ with col_der:
     else:
         st.success(f"**Proyecto Activo:** {st.session_state.tipo_proyecto}")
         
-        # Mostrar tabla resumida de lo que se va a cotizar
         total_materiales = 0
         tabla_datos = []
         
@@ -288,7 +302,6 @@ with col_der:
             nombre = m["item"]
             cantidad = m["cant"]
             unidad = m["unidad"]
-            # Buscar el precio en el diccionario o dar un valor por defecto si no existe
             p_unitario = st.session_state.precios.get(nombre, 5000)
             subtotal = cantidad * p_unitario
             total_materiales += subtotal
@@ -302,11 +315,9 @@ with col_der:
             
         st.table(tabla_datos)
         
-        # Cálculo comercial solicitado
         mano_obra = int(total_materiales * 0.75)
         total_general = total_materiales + mano_obra
         
-        # Tarjetas de visualización de Totales
         c_mat, c_mo, c_tot = st.columns(3)
         c_mat.metric("Materiales + Insumos", f"${total_materiales:,}")
         c_mo.metric("Mano de Obra (75%)", f"${mano_obra:,}")
@@ -315,7 +326,6 @@ with col_der:
         st.markdown("---")
         st.subheader("📲 Compartir y Exportar")
         
-        # Datos del cliente para personalizar
         nom_cliente = st.text_input("Nombre del Cliente:", value="Juan Pérez")
         
         # --- GENERACIÓN DE MENSAJE WHATSAPP ---
@@ -332,9 +342,7 @@ with col_der:
             f"Le enviaré el PDF formal con el detalle de cada insumo a continuación. ¡Quedo atento a sus comentarios!"
         )
         
-        # Encode de URL seguro para WhatsApp
         url_wa = f"https://wa.me/?text={urllib.parse.quote(msg_whatsapp)}"
-        st.colors = "#25D366"
         st.markdown(f'<a href="{url_wa}" target="_blank"><button style="background-color:#25D366; color:white; border:none; padding:10px 20px; border-radius:5px; width:100%; font-weight:bold; cursor:pointer;">🟢 Enviar Resumen de Presupuesto por WhatsApp</button></a>', unsafe_allow_html=True)
         
         st.caption("Nota: Presiona el botón verde para enviar los valores de inmediato. El archivo PDF detallado lo puedes descargar abajo y adjuntarlo en el mismo chat.")
@@ -348,23 +356,18 @@ with col_der:
                 
                 styles = getSampleStyleSheet()
                 
-                # Custom Styles
                 style_titulo = ParagraphStyle('Titulo', parent=styles['Heading1'], fontSize=22, textColor=colors.HexColor('#1E3D59'), spaceAfter=15)
                 style_h2 = ParagraphStyle('Sub', parent=styles['Heading2'], fontSize=14, textColor=colors.HexColor('#17B890'), spaceAfter=10)
                 style_body = ParagraphStyle('Cuerpo', parent=styles['BodyText'], fontSize=10, spaceAfter=8)
-                style_bold = ParagraphStyle('Negrita', parent=style_body, fontName='Helvetica-Bold')
                 
-                # Header
                 story.append(Paragraph("🏗️ COTIZACIÓN FORMAL DE CONSTRUCCIÓN", style_titulo))
                 story.append(Paragraph(f"<b>Proyecto:</b> {st.session_state.tipo_proyecto}", style_body))
                 story.append(Paragraph(f"<b>Cliente:</b> {nom_cliente}", style_body))
                 story.append(Paragraph("<b>Validez de la oferta:</b> 15 días (Sujeto a variación de stock de proveedores)", style_body))
                 story.append(Spacer(1, 15))
                 
-                # Table configuration
                 story.append(Paragraph("📋 Detalle de Insumos y Materiales Asignados:", style_h2))
                 
-                # Header table
                 data_tabla_pdf = [["Descripción de Material / Insumo", "Cantidad", "P. Unitario", "Subtotal"]]
                 for m in st.session_state.carrito:
                     n = m["item"]
@@ -391,7 +394,6 @@ with col_der:
                 story.append(t)
                 story.append(Spacer(1, 20))
                 
-                # Summary block
                 story.append(Paragraph("🧾 Resumen Comercial Final del Proyecto", style_h2))
                 resumen_pdf = [
                     ["Total Neto de Materiales e Insumos indispensables:", f"${total_materiales:,}"],
