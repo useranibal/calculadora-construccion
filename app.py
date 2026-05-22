@@ -2,11 +2,23 @@ import streamlit as st
 import math
 import urllib.parse
 import io
+import os  # <--- ESTA ES LA LÍNEA CLAVE QUE FALTA
+
+# Intentar importar ReportLab para la generación del PDF
+try:
+    from reportlab.lib.pagesizes import letter
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib import colors
+    REPORTLAB_AVAILABLE = True
+except ImportError:
+    REPORTLAB_AVAILABLE = False
 
 # === CONFIGURACIÓN E INYECCIÓN DE PWA NATIVA ===
+# Eliminamos el st.set_page_config duplicado que tenías más abajo
 st.set_page_config(page_title="Calculadora de Construcción", layout="wide", page_icon="🏗️")
 
-# Código HTML oculto para registrar el Manifest y el Service Worker en el teléfono
+# Código HTML oculto para registrar el Manifest y el Service Worker
 pwa_code = """
 <link rel="manifest" href="./manifest.json">
 <script>
@@ -21,19 +33,10 @@ pwa_code = """
   }
 </script>
 """
-# Inyectamos de manera invisible en la app
 st.components.v1.html(pwa_code, height=0, width=0)
 # ===============================================
 
-# Intentar importar ReportLab para la generación del PDF
-try:
-    from reportlab.lib.pagesizes import letter
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.lib import colors
-    REPORTLAB_AVAILABLE = True
-except ImportError:
-    REPORTLAB_AVAILABLE = False
+
 
 # --- CONFIGURACIÓN DE LA PÁGINA ---
 st.set_page_config(page_title="Calculadora de Materiales & Cotizador Pro", layout="wide", page_icon="🏗️")
