@@ -257,6 +257,7 @@ with col_izq:
             agregar_al_presupuesto(lista_muro, f"Muro de Albañilería ({largo_m}m x {alto_m}m) - {tipo_msg}")
 
 # PANEL DE COSTOS Y EXPORTACIÓN CORREGIDO
+# PANEL DE COSTOS Y EXPORTACIÓN MEJORADO VISUALMENTE
 with col_der:
     st.header("💰 Costos e Insumos")
     with st.expander("🛠️ Precios Unitarios"):
@@ -269,32 +270,61 @@ with col_der:
     if not st.session_state.carrito:
         st.warning("Elige opciones y presiona 'Calcular'.")
     else:
-        st.success(f"**Proyecto:** {st.session_state.tipo_proyecto}")
+        st.markdown(f"### Proyecto: <span style='color:#1E3D59;'>{st.session_state.tipo_proyecto}</span>", unsafe_allow_html=True)
+        
         total_materiales = 0
         tabla_datos = []
         for m in st.session_state.carrito:
             nombre = m["item"]
             cantidad = m["cant"]
             p_unitario = st.session_state.precios.get(nombre, 5000)
-            subtotal = cantidad * p_unitario
-            total_materiales += subtotal
-            tabla_datos.append({"Material": nombre, "Cant.": f"{cantidad} {m['unidad']}", "P. Unit": f"${p_unitario:,}", "Subtotal": f"${subtotal:,}"})
             
+            # Forzamos a entero para evitar decimales molestos (.0)
+            subtotal = int(cantidad * p_unitario)
+            total_materiales += subtotal
+            
+            # Formateo limpio para la tabla
+            cant_str = f"{cantidad} {m['unidad']}" if isinstance(cantidad, int) else f"{cantidad:.2f} {m['unidad']}"
+            tabla_datos.append({
+                "Material": nombre, 
+                "Cant.": cant_str, 
+                "P. Unit": f"${int(p_unitario):,}", 
+                "Subtotal": f"${subtotal:,}"
+            })
+            
+        # Mostrar tabla limpia
         st.table(tabla_datos)
+        
+        # Cálculos finales
         mano_obra = int(total_materiales * 0.75)
         total_general = total_materiales + mano_obra
         
-        st.columns(3)[0].metric("Materiales", f"${total_materiales:,}")
-        st.columns(3)[1].metric("Mano Obra (75%)", f"${mano_obra:,}")
-        st.columns(3)[2].metric("TOTAL", f"${total_general:,}")
+        # --- DISEÑO DE TARJETA RESUMEN EN CUADRO ---
+        st.markdown(f"""
+        <div style="background-color: #F8FAFC; border: 1px solid #E2E8F0; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                <span style="font-size: 16px; color: #64748B;">Neto Materiales:</span>
+                <span style="font-size: 16px; font-weight: bold; color: #334155;">${total_materiales:,}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 15px; border-bottom: 1px dashed #CBD5E1; padding-bottom: 10px;">
+                <span style="font-size: 16px; color: #64748B;">Mano de Obra (75%):</span>
+                <span style="font-size: 16px; font-weight: bold; color: #334155;">${mano_obra:,}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 20px; font-weight: bold; color: #1E3D59;">TOTAL ESTIMADO:</span>
+                <span style="font-size: 24px; font-weight: 900; color: #10B981;">${total_general:,}</span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
         
         nom_cliente = st.text_input("Cliente:", value="Juan Pérez")
+        st.markdown("<br>", unsafe_allow_html=True)
         
         # BOTÓN WHATSAPP
         url_wa = f"https://wa.me/?text={urllib.parse.quote(f'Cotización para {nom_cliente}: {st.session_state.tipo_proyecto} - Total ${total_general:,}')}"
-        st.markdown(f'<a href="{url_wa}" target="_blank"><button style="background-color:#25D366; color:white; border:none; padding:10px; border-radius:5px; width:100%; font-weight:bold; cursor:pointer;">🟢 Enviar por WhatsApp</button></a>', unsafe_allow_html=True)
+        st.markdown(f'<a href="{url_wa}" target="_blank"><button style="background-color:#25D366; color:white; border:none; padding:12px; border-radius:6px; width:100%; font-weight:bold; font-size:16px; cursor:pointer; box-shadow: 0px 4px 6px rgba(0,0,0,0.05);">🟢 Enviar por WhatsApp</button></a>', unsafe_allow_html=True)
         
-        # GENERACIÓN DE PDF REPARADA (Eliminado style_body erróneo)
+        # GENERACIÓN DE PDF REPARADA
         if REPORTLAB_AVAILABLE:
             def generar_pdf_reportlab():
                 buffer = io.BytesIO()
@@ -313,7 +343,8 @@ with col_der:
                     n = m["item"]
                     c = m["cant"]
                     pu = st.session_state.precios.get(n, 5000)
-                    data_tabla_pdf.append([n, f"{c} {m['unidad']}", f"${pu:,}", f"${c*pu:,}"])
+                    c_str = f"{c} {m['unidad']}" if isinstance(c, int) else f"{c:.2f} {m['unidad']}"
+                    data_tabla_pdf.append([n, c_str, f"${int(pu):,}", f"${int(c*pu):,}"])
                     
                 t = Table(data_tabla_pdf, colWidths=[240, 90, 90, 90])
                 t.setStyle(TableStyle([
@@ -324,10 +355,18 @@ with col_der:
                     ('FONTSIZE', (0,0), (-1,-1), 9),
                 ]))
                 story.append(t)
+                
+                # Resumen al final del PDF
+                story.append(Spacer(1, 15))
+                story.append(Paragraph(f"<b>Neto Materiales:</b> ${total_materiales:,}", styles['BodyText']))
+                story.append(Paragraph(f"<b>Mano de Obra:</b> ${mano_obra:,}", styles['BodyText']))
+                story.append(Paragraph(f"<b>TOTAL GENERAL:</b> ${total_general:,}", styles['Heading2']))
+                
                 doc.build(story)
                 buffer.seek(0)
                 return buffer.getvalue()
             
+            st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
             st.download_button(
                 label="📥 Descargar Ficha PDF",
                 data=generar_pdf_reportlab(),
