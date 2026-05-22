@@ -205,30 +205,56 @@ with col_izq:
 
     # PESTAÑA 3: MUROS
 # PESTAÑA 3: MUROS (SOLO TEÓRICO BÁSICO)
+# PESTAÑA 3: MUROS (ALBAÑILERÍA TRADICIONAL O PREPARADA)
     with tab3:
         st.header("Cálculo de Albañilería")
         largo_m = st.number_input("Largo del Muro (m)", value=5.0, step=1.0)
         alto_m = st.number_input("Alto del Muro (m)", value=2.0, step=0.1)
         tipo_ladrillo = st.selectbox("Tipo de Ladrillo Oficial:", ["Fiscal (50 u/m2)", "Princesa (38 u/m2)", "Bloque (12.5 u/m2)"])
         
+        # Nueva opción para elegir el tipo de mezcla
+        mezcla_tradicional = st.checkbox("¿Hacer mezcla tradicional? (Cemento y Arena por separado)", value=False)
+        
+        # Aseguramos que los precios de cemento y arena existan en el diccionario si no estaban
+        if "Saco Cemento (25kg)" not in st.session_state.precios:
+            st.session_state.precios["Saco Cemento (25kg)"] = 4200
+        if "Arena Corriente (m3)" not in st.session_state.precios:
+            st.session_state.precios["Arena Corriente (m3)"] = 18500
+
         if st.button("📊 Calcular Muros"):
             area_muro = largo_m * alto_m
             factor_ladrillo = {"Fiscal (50 u/m2)": 50, "Princesa (38 u/m2)": 38, "Bloque (12.5 u/m2)": 12.5}[tipo_ladrillo]
             
-            # Cálculo base de ladrillos con 5% de pérdida
+            # Cálculo de ladrillos con 5% de pérdida
             total_ladrillos = math.ceil(area_muro * factor_ladrillo * 1.05)
             
-            # Estimación de sacos de mortero de pega (25kg) según rendimiento por m2
-            factor_mortero = {"Fiscal (50 u/m2)": 3.0, "Princesa (38 u/m2)": 2.2, "Bloque (12.5 u/m2)": 1.8}[tipo_ladrillo]
-            total_sacos_mortero = math.ceil(area_muro * factor_mortero)
+            # Lista base con el ladrillo seleccionado
+            lista_muro = [{"item": tipo_ladrillo, "cant": total_ladrillos, "unidad": "un"}]
             
-            # Lista estrictamente teórica: solo lo esencial que compone el muro
-            lista_muro = [
-                {"item": tipo_ladrillo, "cant": total_ladrillos, "unidad": "un"},
-                {"item": "Saco Mortero de Pega Listo (25kg)", "cant": total_sacos_mortero, "unidad": "sacos"}
-            ]
+            # Rendimientos base según el tipo de ladrillo
+            rendimiento_sacos_listos = {"Fiscal (50 u/m2)": 3.0, "Princesa (38 u/m2)": 2.2, "Bloque (12.5 u/m2)": 1.8}[tipo_ladrillo]
             
-            agregar_al_presupuesto(lista_muro, f"Muro de Albañilería ({largo_m}m x {alto_m}m)")
+            if mezcla_tradicional:
+                # Conversión teórica: 1 saco listo (25kg) ≈ 0.16 sacos de cemento (25kg) + 0.013 m3 de arena
+                # Para el ladrillo Fiscal (3 sacos/m2) esto rinde: 0.5 sacos cemento y 0.04 m3 de arena por m2
+                total_sacos_listos_teoricos = area_muro * rendimiento_sacos_listos
+                
+                cemento_necesario = math.ceil(total_sacos_listos_teoricos * 0.16)
+                arena_necesaria = round(total_sacos_listos_teoricos * 0.013, 2)
+                
+                # Evitar que la arena quede en 0 si el muro es muy chico
+                if arena_necesaria == 0:
+                    arena_necesaria = 0.1
+                
+                lista_muro.append({"item": "Saco Cemento (25kg)", "cant": cemento_necesario, "unidad": "sacos"})
+                lista_muro.append({"item": "Arena Corriente (m3)", "cant": arena_necesaria, "unidad": "m3"})
+                tipo_msg = "Mezcla In Situ"
+            else:
+                total_sacos_mortero = math.ceil(area_muro * rendimiento_sacos_listos)
+                lista_muro.append({"item": "Saco Mortero de Pega Listo (25kg)", "cant": total_sacos_mortero, "unidad": "sacos"})
+                tipo_msg = "Mortero Predosificado"
+            
+            agregar_al_presupuesto(lista_muro, f"Muro de Albañilería ({largo_m}m x {alto_m}m) - {tipo_msg}")
 
 # PANEL DE COSTOS Y EXPORTACIÓN CORREGIDO
 with col_der:
