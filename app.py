@@ -21,9 +21,17 @@ st.set_page_config(page_title="Calculadora de Materiales & Cotizador Pro", layou
 if "precios" not in st.session_state:
     st.session_state.precios = {
         # Fierros y Estructuras (Por tira de 6m)
-        "20x10 mm": 6200, "20x20 mm": 7400, "20x30 mm": 8900, "20x40 mm": 10500,
-        "20x50 mm": 12300, "30x30 mm": 11800, "40x40 mm": 14900, "50x50 mm": 18500,
-        "100x100x3 mm (Pilar)": 42500, "75x75x2 mm (Pilar)": 24900, "100x50x2 mm (Viga)": 21500,
+        "20x10 mm": 6200, "20x20 mm": 7400, "20x30 mm": 8900, "20x40 mm": 10500, "20x50 mm": 12300,
+        # Nuevos Pilares solicitados (Estructuras de soporte)
+        "30x30x2 mm (Pilar)": 11800,
+        "40x40x2 mm (Pilar)": 14900,
+        "50x50x2 mm (Pilar)": 18500,
+        "60x60x2 mm (Pilar)": 21000,
+        "70x70x2 mm (Pilar)": 23800,
+        "75x75x2 mm (Pilar)": 24900,
+        "80x80x2 mm (Pilar)": 28500,
+        "100x100x2 mm (Pilar)": 39500,
+        "100x50x2 mm (Viga)": 21500,
         # Madera y Soportes Cobertizo
         "Pino 4x4\" (Cepillado)": 14500, "Pino 6x6\"": 32000, "Polín 4\"": 7800,
         # Insumos Metal
@@ -95,7 +103,7 @@ with col_izq:
         if material_soporte == "Madera":
             medida_detalle = st.selectbox("Especificación de Pilares:", ["Pino 4x4\" (Cepillado)", "Pino 6x6\"", "Polín 4\""])
         else:
-            medida_detalle = st.selectbox("Especificación de Pilares:", ["100x100x3 mm (Pilar)", "75x75x2 mm (Pilar)", "100x50x2 mm (Viga)"])
+            medida_detalle = st.selectbox("Especificación de Pilares:", ["100x100x2 mm (Pilar)", "75x75x2 mm (Pilar)", "100x50x2 mm (Viga)"])
 
         poyos_concreto = st.checkbox("¿Pilares enterrados en concreto/cimiento?", value=True, key="cob_poyos")
 
@@ -142,7 +150,7 @@ with col_izq:
         cr1, cr2 = st.columns(2)
         with cr1:
             ancho_r = st.number_input("Ancho Total (m)", value=3.0, step=0.5, key="r_ancho")
-            separacion_cm = st.slider("Separación entre barras (cm)", 5, 20, 8) # Ajustado a 8 por tu última prueba
+            separacion_cm = st.slider("Separación entre barras (cm)", 5, 20, 8)
         with cr2:
             alto_r = st.number_input("Alto Total (m)", value=2.0, step=0.1, key="r_alto")
             incluye_puerta = st.checkbox("¿Lleva puerta peatonal / cerradura incorporada?", value=False)
@@ -158,18 +166,29 @@ with col_izq:
         
         p_col1, p_col2 = st.columns(2)
         with p_col1:
-            perfil_m = st.selectbox("Perfil del Marco Exterior:", list_perfiles_metal, index=2) # 20x30 mm por defecto
+            perfil_m = st.selectbox("Perfil del Marco Exterior:", list_perfiles_metal, index=2)
             if dif_perfil:
-                perfil_i = st.selectbox("Perfil Barras Interiores:", list_perfiles_metal, index=1) # 20x20 mm
+                perfil_i = st.selectbox("Perfil Barras Interiores:", list_perfiles_metal, index=1)
             else:
                 perfil_i = perfil_m
         
         with p_col2:
-            # NUEVO INTERRUPTOR INTELIGENTE PARA CONTROLAR LOS PILARETES PESADOS
             incluye_pilares_tierra = st.checkbox("¿Incluye pilares de sujeción enterrados a tierra?", value=False)
             if incluye_pilares_tierra:
-                pilar_sostenedor = st.selectbox("Perfil Pilares de Sujeción:", ["75x75x2 mm (Pilar)", "100x100x3 mm (Pilar)"])
-                cant_pilares_r = st.number_input("Cantidad de pilares a enterrar", min_value=1, value=2, step=1)
+                # Catálogo completo solicitado por el usuario
+                lista_pilares_nuevos = [
+                    "30x30x2 mm (Pilar)", "40x40x2 mm (Pilar)", "50x50x2 mm (Pilar)",
+                    "60x60x2 mm (Pilar)", "70x70x2 mm (Pilar)", "75x75x2 mm (Pilar)",
+                    "80x80x2 mm (Pilar)", "100x100x2 mm (Pilar)"
+                ]
+                pilar_sostenedor = st.selectbox("Selecciona Medida del Pilar:", lista_pilares_nuevos, index=5) # 75x75 por defecto
+                
+                # Control dinámico de distancia entre postes
+                distancia_postes = st.number_input("Distancia máxima entre pilares (m):", min_value=1.0, max_value=6.0, value=2.0, step=0.5)
+                
+                # Fórmula de taller: (Ancho / Distancia) redondeado arriba + 1 pilar de cierre final
+                cant_pilares_r = math.ceil(ancho_r / distancia_postes) + 1
+                st.caption(f"💡 Se cubicaron automáticamente **{cant_pilares_r} pilares** para cubrir los {ancho_r}m.")
             else:
                 pilar_sostenedor = None
                 cant_pilares_r = 0
@@ -205,7 +224,7 @@ with col_izq:
             total_tiras_interiores_netas = tiras_interiores_largas_netas + tiras_interiores_cortas_netas
             tiras_interior = math.ceil(total_tiras_interiores_netas * 1.05)
             
-            # Cálculo de soldaduras e insumos básicos
+            # Insumos y consumibles
             total_uniones = (num_barrotes * 2) + (num_barrotes_cortos * 2)
             kilos_soldadura_base = total_uniones * 0.015 
             kilos_electrodo = math.ceil(kilos_soldadura_base + 1.0)
@@ -214,15 +233,13 @@ with col_izq:
             discos_corte = math.ceil(total_barras_a_cortar / 8)  
             discos_desbaste = 1 if tiras_interior < 15 else 2
             
-            # Metros lineales totales para pintura
             metros_lineales_totales = (num_barrotes * alto_r) + (num_barrotes_cortos * altura_puntas) + metros_marco
             if incluye_pilares_tierra:
-                metros_lineales_totales += (cant_pilares_r * (alto_r + 0.5))
+                metros_lineales_totales += (cant_pilares_r * (alto_r + 0.6)) # Añadidos 60cm para empotrar
                 
             superficie_real_fierro_m2 = metros_lineales_totales * 0.15
             galones_pintura = math.ceil((superficie_real_fierro_m2 * 2) / 30.0)
             
-            # Armando la lista de materiales base
             lista_reja = [
                 {"item": perfil_m, "cant": tiras_marco, "unidad": "tiras 6m"},
                 {"item": perfil_i, "cant": tiras_interior, "unidad": "tiras 6m"},
@@ -234,9 +251,12 @@ with col_izq:
                 {"item": "Brocha 3\"", "cant": 1, "unidad": "un"}
             ]
             
-            # INYECTAR SÓLO SI EL USUARIO ACTIVÓ LOS PILARES
+            # Cálculo exacto de tiras comerciales de 6m según pilares requeridos
             if incluye_pilares_tierra and pilar_sostenedor:
-                tiras_pilares = math.ceil((cant_pilares_r * (alto_r + 0.5)) / 6.0)
+                largo_pilar_con_empotramiento = alto_r + 0.60 # Altura reja + 60cm bajo tierra
+                total_metros_pilares = cant_pilares_r * largo_pilar_con_empotramiento
+                tiras_pilares = math.ceil(total_metros_pilares / 6.0)
+                
                 lista_reja.append({"item": pilar_sostenedor, "cant": tiras_pilares, "unidad": "tiras 6m"})
                 sacos_concreto = cant_pilares_r * 2 
                 lista_reja.append({"item": "Saco Hormigón Preparado (25kg)", "cant": sacos_concreto, "unidad": "sacos"})
@@ -341,13 +361,10 @@ with col_der:
                 styles = getSampleStyleSheet()
                 style_titulo = ParagraphStyle('Titulo', parent=styles['Heading1'], fontSize=22, textColor=colors.HexColor('#1E3D59'), spaceAfter=15)
                 style_h2 = ParagraphStyle('Sub', parent=styles['Heading2'], fontSize=14, textColor=colors.HexColor('#17B890'), spaceAfter=10)
-                style_body = ParagraphStyle('Cuerpo', parent=styles['BodyText'], fontSize=10, spaceAfter=8)
                 story.append(Paragraph("🏗️ COTIZACIÓN FORMAL DE CONSTRUCCIÓN", style_titulo))
-                story.append(Paragraph(f"<b>Proyecto:</b> {st.session_state.tipo_proyecto}", style_body))
-                story.append(Paragraph(f"<b>Cliente:</b> {nom_cliente}", style_body))
-                story.append(Paragraph("<b>Validez de la oferta:</b> 15 días", style_body))
+                story.append(Paragraph(f"<b>Proyecto:</b> {st.session_state.tipo_proyecto}", style_body=styles['BodyText']))
+                story.append(Paragraph(f"<b>Cliente:</b> {nom_cliente}", style_body=styles['BodyText']))
                 story.append(Spacer(1, 15))
-                story.append(Paragraph("📋 Detalle de Insumos y Materiales Asignados:", style_h2))
                 data_tabla_pdf = [["Descripción de Material / Insumo", "Cantidad", "P. Unitario", "Subtotal"]]
                 for m in st.session_state.carrito:
                     n = m["item"]
@@ -367,10 +384,9 @@ with col_der:
                 ]))
                 story.append(t)
                 story.append(Spacer(1, 20))
-                story.append(Paragraph("🧾 Resumen Comercial Final del Proyecto", style_h2))
                 resumen_pdf = [
-                    ["Total Neto de Materiales e Insumos indispensables:", f"${total_materiales:,}"],
-                    ["Mano de Obra Estimada (75% sobre insumos):", f"${mano_obra:,}"],
+                    ["Total Neto de Materiales:", f"${total_materiales:,}"],
+                    ["Mano de Obra Estimada (75%):", f"${mano_obra:,}"],
                     ["VALOR TOTAL PRESUPUESTADO:", f"${total_general:,}"]
                 ]
                 tr = Table(resumen_pdf, colWidths=[350, 160])
